@@ -12,21 +12,27 @@ def resource_path(relative_path):
     except Exception:
         base_path = os.path.abspath(".")
     return os.path.join(base_path, relative_path)
-# datas=[('background.png','./'),('background.wav','./'),('bullet.png','./'),('missile.png','./'),('enemy1.png','./'),('explosion.wav','./'),('laser.wav','./'),('player1.png','./'),('ufo.png','./'),('freesansbold.ttf','./')]
+# datas=[('background.png','./'),('background.wav','./'),('bullet.png','./'),('missile.png','./'),('enemy1.png','./'),('enemy2.png','./'),('explosion.wav','./'),('laser.wav','./'),('player1.png','./'),('player2.png','./'),('ufo.png','./'),('freesansbold.ttf','./')]
 
 
 # Global variables
 SCREEN_HEIGHT = 720
 SCREEN_WIDTH = 720
-ENEMYTYPES = 1
+ENEMYTYPES = 2
 PLAYERTYPES = 2
-num_players = min(2, int(input('Enter number of players: ')))
+num_players = max(1, min(2, int(input('Enter number of players: '))))
+if num_players == 1:
+    PLAYERKEYS = {pygame.K_LEFT:(0,-1,0), pygame.K_RIGHT:(0,1,0), pygame.K_DOWN:(0,0,1), pygame.K_UP:(0,0,-1), pygame.K_SPACE:(0,1)}
+    KEYPLAYERS = {pygame.K_LEFT:0, pygame.K_RIGHT:0, pygame.K_DOWN:0, pygame.K_UP:0}
+else:
+    PLAYERKEYS = {pygame.K_LEFT:(0,-1,0), pygame.K_RIGHT:(0,1,0), pygame.K_DOWN:(0,0,1), pygame.K_UP:(0,0,-1), pygame.K_KP0:(0,1),
+    pygame.K_a:(1,-1,0), pygame.K_d:(1,1,0), pygame.K_s:(1,0,1), pygame.K_w:(1,0,-1), pygame.K_SPACE:(1,1)}
+    KEYPLAYERS = {pygame.K_LEFT:0, pygame.K_RIGHT:0, pygame.K_DOWN:0, pygame.K_UP:0,
+    pygame.K_a:1, pygame.K_d:1, pygame.K_s:1, pygame.K_w:1}
 deltaP = 0.8
 deltaE = 0.2
 deltaB = 4
 deltaEB = 0.3
-textX = 10
-textY = 10
 # Initialize pygame and Create Screen (or Window)
 pygame.init()
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
@@ -129,36 +135,19 @@ class Game:
                 if event.type == pygame.QUIT:
                     running = False
                 if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_LEFT:
-                        self.players[0].dx = -self.players[0].delta
-                    if event.key == pygame.K_RIGHT:
-                        self.players[0].dx = self.players[0].delta
-                    if event.key == pygame.K_UP:
-                        self.players[0].dy = -self.players[0].delta
-                    if event.key == pygame.K_DOWN:
-                        self.players[0].dy = self.players[0].delta
-                    if (event.key == pygame.K_KP0 or (num_players==1 and event.key == pygame.K_SPACE)) and self.GAMESTATE == 1 and not self.players[0].GAMEOVER:
-                        shoot(self.players[0].bullet)
-                    if event.key == pygame.K_a and num_players==2:
-                        self.players[1].dx = -self.players[1].delta
-                    if event.key == pygame.K_d and num_players==2:
-                        self.players[1].dx = self.players[1].delta
-                    if event.key == pygame.K_w and num_players==2:
-                        self.players[1].dy = -self.players[1].delta
-                    if event.key == pygame.K_s and num_players==2:
-                        self.players[1].dy = self.players[1].delta
-                    if event.key == pygame.K_SPACE and num_players==2 and self.GAMESTATE == 1 and not self.players[1].GAMEOVER:
-                        shoot(self.players[1].bullet)
+                    if event.key in PLAYERKEYS:
+                        if len(PLAYERKEYS[event.key])==3:
+                            self.players[PLAYERKEYS[event.key][0]].dx = self.players[PLAYERKEYS[event.key][0]].delta*PLAYERKEYS[event.key][1]
+                            self.players[PLAYERKEYS[event.key][0]].dy = self.players[PLAYERKEYS[event.key][0]].delta*PLAYERKEYS[event.key][2]
+                        elif self.GAMESTATE == 1 and not self.players[PLAYERKEYS[event.key][0]].GAMEOVER:
+                            shoot(self.players[PLAYERKEYS[event.key][0]].bullet)
                     if event.key == pygame.K_p:
                         self.GAMESTATE = self.GAMESTATE ^ 1
                     if event.key == pygame.K_r and (self.GAMEOVER or self.GAMESTATE == 0):
                         self.reset()
                         break
-                if event.type == pygame.KEYUP:
-                    if event.key == pygame.K_RIGHT or event.key == pygame.K_LEFT or event.key == pygame.K_UP or event.key == pygame.K_DOWN:
-                        self.players[0].dy = self.players[0].dx = 0
-                    if num_players==2 and (event.key == pygame.K_a or event.key == pygame.K_w or event.key == pygame.K_s or event.key == pygame.K_d):
-                        self.players[1].dy = self.players[1].dx = 0
+                if event.type == pygame.KEYUP and event.key in KEYPLAYERS:
+                    self.players[KEYPLAYERS[event.key]].dy = self.players[KEYPLAYERS[event.key]].dx = 0
             # Game not paused
             if self.GAMESTATE == 1:
                 # Player Movement
@@ -181,7 +170,7 @@ class Game:
                         if isCollision(player, enemy, 28) or isCollision(player, enemy.bullet, 28):
                             EXPLOSION.play()
                             player.GAMEOVER = True
-                            if self.players[0].GAMEOVER and (num_players==1 or self.players[1].GAMEOVER):
+                            if all(player.GAMEOVER for player in self.players):
                                 for j in self.enemies:
                                     j.y = 2000
                                 self.game_over()
